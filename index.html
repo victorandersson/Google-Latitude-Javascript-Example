@@ -11,7 +11,7 @@
 <title>Google Latitude Javascript Example</title>
 
 <!-- Google Maps -->
-<script src="http://maps.google.com/maps?file=api&amp;v=2&amp;sensor=true_or_false&amp;key=ABQIAAAAveC90dmNuu7-f2uDhiCiMxQWCpPgz6xewQ57n9xAq3YOsI4AGhQXgcftAw5gAmPb34xHD-OzzmFukQ" type="text/javascript"></script>
+<script src="http://maps.google.com/maps?file=api&amp;v=2&amp;sensor=false&amp;key=ABQIAAAAveC90dmNuu7-f2uDhiCiMxQWCpPgz6xewQ57n9xAq3YOsI4AGhQXgcftAw5gAmPb34xHD-OzzmFukQ" type="text/javascript"></script>
 	
 <!-- jQuery -->
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
@@ -67,8 +67,7 @@ var APIURL = "http://www.google.com/latitude/apps/badge/api?user=703255244942154
 var GPSUPDATETIME = 60000;
 
 var map;
-var agent = new Array();
-var messages = new Array();
+var user = new Array();
 var gpsupdatetimer;
 var tooltip;
 
@@ -173,7 +172,7 @@ function showTooltip(marker) {
 
 
 /**
- * Get the latest infos from the DB about an agent.
+ * Get the latest infos from the DB about an user.
  */
 function getStatusUpdates() {
 	
@@ -182,116 +181,86 @@ function getStatusUpdates() {
 		type : "GET",
 		url : "proxy.php",
 		data : "proxy_url="+APIURL,
-		success : function(msg) {
+		success : function(data) {
 
-console.log(msg);
-		
-		var data = eval('(' + msg + ')');
-
-
-
-
-
-		// show errors
-		if (typeof data['error'] != "undefined") {
-			alert(data['error']);
-			return;
-		}
-	
-	
-		
-		// iterate over agents
-		for (var i = 0; i < data['agentnum']; i++) {
-				
-				// set the new coordinates for a point
-				var newLatLng = new GLatLng(data[i]['latitude'], data[i]['longitude']);
-				if (typeof agent[i] == "undefined") {
-					agent[i] = new Array();
-					agent[i]['distance'] = 2;
-					agent[i]['marker'] = new GMarker(newLatLng);
-					map.addOverlay(agent[i]['marker']);
-
-
-          createSendMessageHandler(data[i]['id']);
-					
-					// array for points history
-					agent[i]['points'] = new Array();
-					
-					// circle for accuracy
-					agent[i]['circle'];
-		
-          // create tooltip
-		      GEvent.addListener(agent[i]['marker'], "mouseover", function() {
-		        showTooltip(this);
-		      });
-		
-		      GEvent.addListener(agent[i]['marker'], "mouseout", function() {
-		        tooltip.style.display = "none";
-		      });
-					
-				
-					
-				} else {
-					var lastLatLng = agent[i]['marker'].getLatLng();
-					agent[i]['distance'] = newLatLng.distanceFrom(lastLatLng);
-				} 
-				//map.panTo(newLatLng);
+		//console.log(data['features']);
 		
 		
-				if(agent[i]['distance'] > 1) {
-					
-          // moved more than one meter
-          agent[i]['marker'].setLatLng(newLatLng);
-					
-					// draw lines
-					if (agent[i]['points'].length >= 30) {
-						agent[i]['points'].shift();
-					}
-					agent[i]['points'].push(newLatLng);
-					if (typeof agent[i]['polyline'] != "undefined") {
-						map.removeOverlay(agent[i]['polyline']);
-					}
-					agent[i]['polyline'] = new GPolyline(agent[i]['points'], "#ff0000", 2);
-					map.addOverlay(agent[i]['polyline']);
-					
-					// draw accuracy circle
-          if(data[i]['batterylevel'] > 10) {
-            data[i]['color'] = "#0000FF";
-          } else {
-            data[i]['color'] = "#FF0000";
-          }					
-					drawCircle(i, newLatLng, data[i]['accuracy'], data[i]['color']);
-					
-				}		
-				
-				var tooltipinfo = 
-					"NAME: " + data[i]['name'] + "<br/>" +
-          "SPEED: " + data[i]['speed'] + "<br/>" +
-					"BATTERY: " + data[i]['batterylevel'] + "%<br/>" +
-					"PROVIDER: " + data[i]['provider'] + "<br/>" +
-					"TIME: " + data[i]['timestamp'] + "<br/>";
+		$.each(data['features'], function(idx, feature) {
+
+			var index = feature.properties.id;
+
+			var newLatLng = new GLatLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+			if (typeof user[index] == "undefined") {
 			
-				agent[i]['marker'].tooltip = tooltipinfo;
-				
-        var htmlinfo = 
-					"PHONE: " + data[i]['phonenumber'] + "<br/>" +
-          "TIME: " + data[i]['timestamp'] + "<br/><br/><br/>" +
-					"BATTERY: " + data[i]['batterylevel'] + "%<br/>" +
-					"<div id='progressbar"+i+"'></div><br/><br/>";
+				user[index] = new Array();
+				user[index]['distance'] = 2;
+				user[index]['marker'] = new GMarker(newLatLng);
+				map.addOverlay(user[index]['marker']);
 	
-	       
-				$('#agent'+i).html(htmlinfo);
-        $("#progressbar"+i).progressbar({ value: data[i]['batterylevel'] });
+				// array for points history
+				user[index]['points'] = new Array();
+					
+				// circle for accuracy
+				user[index]['circle'];
+		
+				// create tooltip
+				GEvent.addListener(user[index]['marker'], "mouseover", function() {
+					showTooltip(this);
+				});
+		
+				GEvent.addListener(user[index]['marker'], "mouseout", function() {
+					tooltip.style.display = "none";
+				});
+					
+			} else {
+				var lastLatLng = user[index]['marker'].getLatLng();
+				user[index]['distance'] = newLatLng.distanceFrom(lastLatLng);
+			} 
+			
+			
+
+			if(user[index]['distance'] > 1) {
+			
+				// moved more than one meter
+				user[index]['marker'].setLatLng(newLatLng);
+					
+				// draw lines
+				if (user[index]['points'].length >= 30) {
+					user[index]['points'].shift();
+				}
+				user[index]['points'].push(newLatLng);
+				if (typeof user[index]['polyline'] != "undefined") {
+					map.removeOverlay(user[index]['polyline']);
+				}
+				user[index]['polyline'] = new GPolyline(user[index]['points'], "#ff0000", 2);
+				map.addOverlay(user[index]['polyline']);
+					
+					
+				user[index]['color'] = "#0000FF";
+				/*
+				// draw accuracy circle
+				if(data[index]['batterylevel'] > 10) {
+					user[index]['color'] = "#0000FF";
+				} else {
+					user[index]['color'] = "#FF0000";
+				}			
+				*/
+				drawCircle(index, newLatLng, feature.properties.accuracyInMeters, user[index]['color']);
+					
+			}		
 
 				
-				
-				}
-				
-				// increas values for batteryupdatetimer
-        if(++batteryupdatecnt > BATTERYGRAPHUPDATECNT) {
-          batteryupdatecnt = 0;
-        }
-				
+			/*
+			var timestamp = new Date(feature.properties.timeStamp);
+			var date = timestamp.getDate() + "." + timestamp.getMonth() + "." + timestamp.getFullYear() + " " + timestamp.getHours() + ":" + timestamp.getMinutes();
+			*/
+			var tooltipinfo = "<img width='"+feature.properties.photoWidth+"' height='"+feature.properties.photoHeight+"' src='"+feature.properties.photoUrl+"'><br/>";
+			user[index]['marker'].tooltip = tooltipinfo;
+			
+		
+		});
+		
 		}
 
 	});
@@ -307,8 +276,8 @@ function drawCircle(i, centerOfCircle, radiusInMeter, color) {
 
 	var circleRadius = radiusInMeter / 1000;
 	
-	if (agent[i]['circle']) {
-		map.removeOverlay(agent[i]['circle']);
+	if (user[i]['circle']) {
+		map.removeOverlay(user[i]['circle']);
 	}
 
 /*
@@ -342,12 +311,12 @@ function drawCircle(i, centerOfCircle, radiusInMeter, color) {
 		}
 
 		if (d < 1.5678565720686044) {
-			agent[i]['circle'] = new GPolygon(circlePoints, color, 2, 1, color, 0.25);	
+			user[i]['circle'] = new GPolygon(circlePoints, color, 2, 1, color, 0.25);	
 		}
 		else {
-			agent[i]['circle'] = new GPolygon(circlePoints, color, 2, 1);	
+			user[i]['circle'] = new GPolygon(circlePoints, color, 2, 1);	
 		}
-		map.addOverlay(agent[i]['circle']); 
+		map.addOverlay(user[i]['circle']); 
 
 //		map.setZoom(map.getBoundsZoomLevel(bounds));
 	}

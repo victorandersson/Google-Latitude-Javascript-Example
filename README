@@ -1,10 +1,25 @@
+This example should give you all the necessary input nedded to build your own Google Latitude based
+tracking widget for your website using Javascript and php (ajax proxy). If you like to commit changes
+that make the example even better please just do so!
 
+A working example as of June 13 2010 can be found at:
+http://vinzenzweber.com/latitude/
+
+This code is using Troy Wolf's ajax php proxy:
+http://www.troywolf.com/articles
 
 
 HOWTO
 
-1. Create a Google Maps API key for your domain
+To use this sample code on your own domain you have to go through the following steps:
+
+1. Create a Google Maps API key for your domain and replace my code in index.html. Set sensor=false!
 http://code.google.com/apis/maps/
 
-2. Add the IDs of the Google Latitude users you want to be displayed on the map.
+2. Add the IDs of the Google Latitude users you want to be displayed on the map by editing the
+javascript variable APIURL. Make sure you keep ampersand chars encoded such as "%26type=json" so that
+the proxy code works.
+
+3. If you need any adaptations and can't do it yourself you can hire me. Just take a look at
+http://www.vinzenzweber.com
 
