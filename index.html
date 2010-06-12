@@ -1,0 +1,368 @@
+<!-- 
+ * Vinzenz-Emanuel Weber
+ * vinzenzweber.com
+ * 12.06.2010
+-->
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Google Latitude Javascript Example</title>
+
+<!-- Google Maps -->
+<script src="http://maps.google.com/maps?file=api&amp;v=2&amp;sensor=true_or_false&amp;key=ABQIAAAAveC90dmNuu7-f2uDhiCiMxQWCpPgz6xewQ57n9xAq3YOsI4AGhQXgcftAw5gAmPb34xHD-OzzmFukQ" type="text/javascript"></script>
+	
+<!-- jQuery -->
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+
+
+
+<style type="text/css">
+
+v\:* { /* Only for IE */
+	behavior:url(#default#VML);
+}
+
+#descr { position: absolute;
+	left: 580px;
+	top: 50px;
+	margin-right: 40px;
+}
+
+.tooltip {
+	text-align: left;
+	opacity: .70;
+	-moz-opacity:.70;
+	filter:Alpha(opacity=70);
+	white-space: nowrap;
+	margin: 0;
+	padding: 2px 0.5ex;
+	border: 1px solid #000;
+	font-weight: bold;
+	font-size: 9pt;
+	font-family: Verdana;
+	background-color: #fff;
+}
+
+
+body{ background-color:#000; font: 62.5% "Trebuchet MS", sans-serif; padding: 0px; margin:0px; }
+
+#msg_title {color:#fff; font-weight: bold; font-size:1.1em}
+#msg_subtitle {font: 1.0em "Trebuchet MS", sans-serif;}
+#msg_text {font: 1.0em "Trebuchet MS", sans-serif;}
+
+</style>
+
+</head>
+
+<body>
+
+
+<div id="map_canvas" style="width: 1000px; height:700px; padding: 0px; margin:0px;"></div>
+<script type="text/javascript">
+
+// watch out to set the ampersand character "&" to "%26" for the ajax proxy to work
+var APIURL = "http://www.google.com/latitude/apps/badge/api?user=7032552449421543595,-7999575520286943076,-7953015305724826788,8213811962822330800%26type=json";
+var GPSUPDATETIME = 60000;
+
+var map;
+var agent = new Array();
+var messages = new Array();
+var gpsupdatetimer;
+var tooltip;
+
+
+
+/**
+ * Initialize the Google Maps API
+ */
+function initialize() {
+
+	// set the size of the map to the maximum for the inner browser size
+	setMapSize();
+
+	// initialize the map
+	map = new GMap2(document.getElementById("map_canvas"));
+	map.setMapType(G_NORMAL_MAP);
+	//map.setMapType(G_PHYSICAL_MAP);
+	
+	map.addControl(new GLargeMapControl());
+	map.addControl(new GMapTypeControl());
+	map.addControl(new GOverviewMapControl());
+	map.addControl(new GScaleControl());
+	map.enableScrollWheelZoom();
+	centerMap();
+
+	// add a div element for toolips
+	tooltip = document.createElement("div");
+	tooltip.className = "tooltip";
+	map.getPane(G_MAP_MARKER_PANE).appendChild(tooltip);
+  	
+	// load user status
+	getStatusUpdates();
+	
+	gpsupdatetimer = window.setInterval("getStatusUpdates()", GPSUPDATETIME);
+}
+
+
+
+/**
+ * Recenter the map over Vienna's first district
+ */
+function centerMap() {
+	map.setCenter(new GLatLng(48.209545939271244, 16.37065887451172), 13);
+}
+
+
+/**
+ * Set the size of the map dynamically.
+ * Used when the user changes the size of his browser.
+ */
+function setMapSize() {
+	var uniwin = {
+		width : window.innerWidth || document.documentElement.clientWidth
+				|| document.body.offsetWidth,
+		height : window.innerHeight || document.documentElement.clientHeight
+				|| document.body.offsetHeight
+	};
+
+	document.getElementById('map_canvas').style["width"] = uniwin.width + "px";
+	document.getElementById('map_canvas').style["height"] = uniwin.height + "px";
+}
+
+
+/**
+ * Called when the user changes the size of his browser. 
+ */
+function resizeMap() {
+	var center = map.getCenter();
+	setMapSize();
+	map.checkResize();
+	map.setCenter(center);
+}
+
+
+/**
+ * Show a tooltip for a marker
+ * @param marker The marker the mouse is over
+ */
+function showTooltip(marker) {
+
+	 tooltip.innerHTML = marker.tooltip;
+	 tooltip.style.display = "block";
+
+	 // Tooltip transparency specially for IE
+	 if(typeof(tooltip.style.filter) == "string") {
+		 tooltip.style.filter = "alpha(opacity:70)";
+	 }
+
+	 var currtype = map.getCurrentMapType().getProjection();
+	 var point= currtype.fromLatLngToPixel(map.fromDivPixelToLatLng(new GPoint(0,0),true),map.getZoom());
+	 var offset= currtype.fromLatLngToPixel(marker.getLatLng(),map.getZoom());
+	 var anchor = marker.getIcon().iconAnchor;
+	 var width = marker.getIcon().iconSize.width + 6;
+	// var height = tooltip.clientHeight +18;
+	 var height = 10;
+	 var pos = new GControlPosition(G_ANCHOR_TOP_LEFT, new GSize(offset.x - point.x - anchor.x + width, offset.y - point.y -anchor.y - height)); 
+	 pos.apply(tooltip);
+}
+
+
+	
+
+
+/**
+ * Get the latest infos from the DB about an agent.
+ */
+function getStatusUpdates() {
+	
+
+	$.ajax( {
+		type : "GET",
+		url : "proxy.php",
+		data : "proxy_url="+APIURL,
+		success : function(msg) {
+
+console.log(msg);
+		
+		var data = eval('(' + msg + ')');
+
+
+
+
+
+		// show errors
+		if (typeof data['error'] != "undefined") {
+			alert(data['error']);
+			return;
+		}
+	
+	
+		
+		// iterate over agents
+		for (var i = 0; i < data['agentnum']; i++) {
+				
+				// set the new coordinates for a point
+				var newLatLng = new GLatLng(data[i]['latitude'], data[i]['longitude']);
+				if (typeof agent[i] == "undefined") {
+					agent[i] = new Array();
+					agent[i]['distance'] = 2;
+					agent[i]['marker'] = new GMarker(newLatLng);
+					map.addOverlay(agent[i]['marker']);
+
+
+          createSendMessageHandler(data[i]['id']);
+					
+					// array for points history
+					agent[i]['points'] = new Array();
+					
+					// circle for accuracy
+					agent[i]['circle'];
+		
+          // create tooltip
+		      GEvent.addListener(agent[i]['marker'], "mouseover", function() {
+		        showTooltip(this);
+		      });
+		
+		      GEvent.addListener(agent[i]['marker'], "mouseout", function() {
+		        tooltip.style.display = "none";
+		      });
+					
+				
+					
+				} else {
+					var lastLatLng = agent[i]['marker'].getLatLng();
+					agent[i]['distance'] = newLatLng.distanceFrom(lastLatLng);
+				} 
+				//map.panTo(newLatLng);
+		
+		
+				if(agent[i]['distance'] > 1) {
+					
+          // moved more than one meter
+          agent[i]['marker'].setLatLng(newLatLng);
+					
+					// draw lines
+					if (agent[i]['points'].length >= 30) {
+						agent[i]['points'].shift();
+					}
+					agent[i]['points'].push(newLatLng);
+					if (typeof agent[i]['polyline'] != "undefined") {
+						map.removeOverlay(agent[i]['polyline']);
+					}
+					agent[i]['polyline'] = new GPolyline(agent[i]['points'], "#ff0000", 2);
+					map.addOverlay(agent[i]['polyline']);
+					
+					// draw accuracy circle
+          if(data[i]['batterylevel'] > 10) {
+            data[i]['color'] = "#0000FF";
+          } else {
+            data[i]['color'] = "#FF0000";
+          }					
+					drawCircle(i, newLatLng, data[i]['accuracy'], data[i]['color']);
+					
+				}		
+				
+				var tooltipinfo = 
+					"NAME: " + data[i]['name'] + "<br/>" +
+          "SPEED: " + data[i]['speed'] + "<br/>" +
+					"BATTERY: " + data[i]['batterylevel'] + "%<br/>" +
+					"PROVIDER: " + data[i]['provider'] + "<br/>" +
+					"TIME: " + data[i]['timestamp'] + "<br/>";
+			
+				agent[i]['marker'].tooltip = tooltipinfo;
+				
+        var htmlinfo = 
+					"PHONE: " + data[i]['phonenumber'] + "<br/>" +
+          "TIME: " + data[i]['timestamp'] + "<br/><br/><br/>" +
+					"BATTERY: " + data[i]['batterylevel'] + "%<br/>" +
+					"<div id='progressbar"+i+"'></div><br/><br/>";
+	
+	       
+				$('#agent'+i).html(htmlinfo);
+        $("#progressbar"+i).progressbar({ value: data[i]['batterylevel'] });
+
+				
+				
+				}
+				
+				// increas values for batteryupdatetimer
+        if(++batteryupdatecnt > BATTERYGRAPHUPDATECNT) {
+          batteryupdatecnt = 0;
+        }
+				
+		}
+
+	});
+}
+
+
+/**
+ * Draw a circle on the map.
+ * @param centerOfCircle The center of the circle of type GLatLng
+ * @param radiusInMeter The radius of the circle in meter.
+ */
+function drawCircle(i, centerOfCircle, radiusInMeter, color) {
+
+	var circleRadius = radiusInMeter / 1000;
+	
+	if (agent[i]['circle']) {
+		map.removeOverlay(agent[i]['circle']);
+	}
+
+/*
+	if (centerMarker) {
+		map.setCenter(centerMarker.getLatLng())
+	}
+	else {
+		centerMarker = new GMarker(map.getCenter(),{draggable:true});
+		GEvent.addListener(centerMarker,'dragend',drawCircle)
+		map.addOverlay(centerMarker);
+	}
+*/
+	//var center = map.getCenter();
+	var center = centerOfCircle;
+	var bounds = new GLatLngBounds();
+	var circlePoints = Array();
+
+	with (Math) {
+		var d = circleRadius/6378.8;	// radians
+		var lat1 = (PI/180)* center.lat(); // radians
+		var lng1 = (PI/180)* center.lng(); // radians
+
+		for (var a = 0 ; a < 361 ; a++ ) {
+			var tc = (PI/180)*a;
+			var y = asin(sin(lat1)*cos(d)+cos(lat1)*sin(d)*cos(tc));
+			var dlng = atan2(sin(tc)*sin(d)*cos(lat1),cos(d)-sin(lat1)*sin(y));
+			var x = ((lng1-dlng+PI) % (2*PI)) - PI ; // MOD function
+			var point = new GLatLng(parseFloat(y*(180/PI)),parseFloat(x*(180/PI)));
+			circlePoints.push(point);
+			bounds.extend(point);
+		}
+
+		if (d < 1.5678565720686044) {
+			agent[i]['circle'] = new GPolygon(circlePoints, color, 2, 1, color, 0.25);	
+		}
+		else {
+			agent[i]['circle'] = new GPolygon(circlePoints, color, 2, 1);	
+		}
+		map.addOverlay(agent[i]['circle']); 
+
+//		map.setZoom(map.getBoundsZoomLevel(bounds));
+	}
+}
+
+
+
+
+
+	window.onload = initialize;
+	window.onunload = GUnload;
+	window.onresize = resizeMap;
+</script>
+
+
+
+</body>
+</html>

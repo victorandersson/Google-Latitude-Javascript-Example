@@ -1,0 +1,10 @@
+
+
+
+HOWTO
+
+1. Create a Google Maps API key for your domain
+http://code.google.com/apis/maps/
+
+2. Add the IDs of the Google Latitude users you want to be displayed on the map.
+
