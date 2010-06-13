@@ -1,7 +1,7 @@
 <!-- 
  * Vinzenz-Emanuel Weber
  * vinzenzweber.com
- * 12.06.2010
+ * 13.06.2010
 -->
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
@@ -105,13 +105,27 @@ function initialize() {
 }
 
 
-
 /**
- * Recenter the map over Vienna's first district
+ * Recenter the map over all markers
  */
 function centerMap() {
-	map.setCenter(new GLatLng(48.209545939271244, 16.37065887451172), 13);
+	var usercnt = 0;
+	var bounds = new GLatLngBounds();
+	
+	for (id in user) { 
+		usercnt++;
+		bounds.extend(user[id].marker.getPoint());
+	}
+
+	if(usercnt > 0) {
+		map.setZoom(map.getBoundsZoomLevel(bounds)-3);
+		map.setCenter(bounds.getCenter());
+	} else {
+		map.setCenter(new GLatLng(0,0),0);
+	}
+
 }
+
 
 
 /**
@@ -176,13 +190,14 @@ function showTooltip(marker) {
  */
 function getStatusUpdates() {
 	
-
 	$.ajax( {
 		type : "GET",
 		url : "proxy.php",
 		data : "proxy_url="+APIURL,
 		success : function(data) {
 
+		var doCenterMap = false;
+		
 		//console.log(data['features']);
 		
 		
@@ -247,7 +262,9 @@ function getStatusUpdates() {
 				}			
 				*/
 				drawCircle(index, newLatLng, feature.properties.accuracyInMeters, user[index]['color']);
-					
+				
+				// update map bounds
+				doCenterMap = true;
 			}		
 
 				
@@ -260,6 +277,12 @@ function getStatusUpdates() {
 			
 		
 		});
+		
+		
+		// center map over users
+		if(doCenterMap) {
+			centerMap();
+		}
 		
 		}
 
