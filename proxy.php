@@ -49,5 +49,5 @@ $ary_headers = split("\n", $h->header);
 foreach($ary_headers as $hdr) { header($hdr); }
 
 // Send the response body to the client.
-echo "response:" . $h->body;
+echo $h->body;
 ?>
